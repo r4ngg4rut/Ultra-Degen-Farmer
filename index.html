@@ -59,13 +59,13 @@
 </div>
 
 <script>
-/* ========= DATE ========= */
+/* ================= DATE ================= */
 const todayObj = new Date();
 const today = todayObj.toISOString().split("T")[0];
 const year = todayObj.getFullYear();
 document.getElementById("today").innerText = "📅 " + today;
 
-/* ========= FIREBASE CONFIG ========= */
+/* ================= FIREBASE ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyAMMZ5nXovO8_KnWf3qTHTRsJXoeLsJHHI",
   authDomain: "ultra-degen-farmer.firebaseapp.com",
@@ -80,16 +80,23 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const dbRoot = firebase.database();
 
+/* ================= STATE ================= */
 let userRef = null;
-let db = { year, tasks: [], history: {}, reminder: null };
+let db = {
+  year,
+  tasks: [],
+  history: {},
+  reminder: null
+};
 
-/* ========= AUTH ========= */
+/* ================= AUTH ================= */
 auth.onAuthStateChanged(user => {
   if (user) {
     authBox.classList.add("hidden");
     app.classList.remove("hidden");
 
     userRef = dbRoot.ref("ultra_degen/" + user.uid);
+
     userRef.on("value", snap => {
       if (snap.exists()) db = snap.val();
       else save();
@@ -112,61 +119,160 @@ function signin(){
 }
 function logout(){ auth.signOut(); }
 
-function save(){ if(userRef) userRef.set(db); }
+/* ================= SAVE ================= */
+function save(){
+  if(userRef) userRef.set(db);
+}
 
-/* ========= TASK ========= */
+/* ================= TASK ================= */
 function addTask(){
-  if(!taskName.value || !taskWallet.value) return alert("Lengkapi data");
-  db.tasks.push({id:crypto.randomUUID(),name:taskName.value,wallet:taskWallet.value,link:taskLink.value});
-  taskName.value=taskWallet.value=taskLink.value="";
-  save();
-}
-function toggleTask(id){
-  if(!db.history[today]) db.history[today]={};
-  db.history[today][id]=!db.history[today][id];
-  save();
-}
-function render(){
-  taskList.innerHTML="";
-  db.tasks.forEach(t=>{
-    const done=db.history[today]?.[t.id];
-    taskList.innerHTML+=`
-    <div class="flex justify-between py-2 border-b border-slate-700">
-      <div class="${done?'line-through text-green-400':''}">${t.name} (${t.wallet})</div>
-      <input type="checkbox" ${done?'checked':''} onchange="toggleTask('${t.id}')">
-    </div>`;
+  const name = taskName.value.trim();
+  const wallet = taskWallet.value.trim();
+  const link = taskLink.value.trim();
+
+  if(!name || !wallet){
+    alert("Nama & wallet wajib");
+    return;
+  }
+
+  db.tasks.push({
+    id: crypto.randomUUID(),
+    name,
+    wallet,
+    link
   });
+
+  taskName.value = "";
+  taskWallet.value = "";
+  taskLink.value = "";
+
+  save();
+  render(); // 🔥 FIX UTAMA
+}
+
+function toggleTask(id){
+  if(!db.history[today]) db.history[today] = {};
+  db.history[today][id] = !db.history[today][id];
+  save();
+  render();
+}
+
+function removeTask(id){
+  if(!confirm("Hapus garapan ini?")) return;
+  db.tasks = db.tasks.filter(t => t.id !== id);
+  save();
+  render();
+}
+
+/* ================= RENDER ================= */
+function render(){
+  taskList.innerHTML = "";
+
+  db.tasks.forEach(t => {
+    const done = db.history[today]?.[t.id] || false;
+
+    taskList.innerHTML += `
+      <div class="flex justify-between items-center border-b border-slate-700 py-2">
+        <div>
+          <div class="${done ? 'line-through text-green-400' : ''}">
+            ${t.name} (${t.wallet})
+          </div>
+          ${t.link ? `<a href="${t.link}" target="_blank" class="text-sky-400 text-sm">🔗 Buka</a>` : ""}
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" ${done ? "checked" : ""} onchange="toggleTask('${t.id}')">
+          <button onclick="removeTask('${t.id}')" class="text-red-400">🗑️</button>
+        </div>
+      </div>
+    `;
+  });
+
   drawHeatmap();
 }
 
-/* ========= HEATMAP ========= */
+/* ================= HEATMAP BULANAN ================= */
 function drawHeatmap(){
-  monthHeatmap.innerHTML="";
-  const m=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-  m.forEach((x,i)=>{
-    let c=0;
-    Object.keys(db.history).forEach(d=>{
-      const dt=new Date(d);
-      if(dt.getFullYear()===year && dt.getMonth()===i)
-        c+=Object.values(db.history[d]).filter(v=>v).length;
+  monthHeatmap.innerHTML = "";
+  const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+
+  months.forEach((m, idx) => {
+    let count = 0;
+
+    Object.keys(db.history).forEach(d => {
+      const dt = new Date(d);
+      if(dt.getFullYear() === year && dt.getMonth() === idx){
+        count += Object.values(db.history[d]).filter(v => v).length;
+      }
     });
-    monthHeatmap.innerHTML+=`
-    <div class="rounded-xl p-4 text-center ${c?'bg-green-700':'bg-slate-700'}">
-      <b>${x}</b><div class="text-xs">${c} done</div>
-    </div>`;
+
+    let color = "bg-slate-700";
+    if(count > 0) color = "bg-green-900";
+    if(count > 10) color = "bg-green-600";
+    if(count > 30) color = "bg-green-400";
+
+    monthHeatmap.innerHTML += `
+      <div class="rounded-xl p-4 text-center ${color}">
+        <div class="font-bold">${m}</div>
+        <div class="text-xs">${count} done</div>
+      </div>
+    `;
   });
 }
 
-/* ========= REMINDER ========= */
+/* ================= REMINDER ================= */
 function setReminder(){
-  db.reminder=reminderTime.value;
+  const time = reminderTime.value;
+  if(!time) return alert("Pilih jam dulu");
+  db.reminder = time;
   save();
   Notification.requestPermission();
 }
+
 setInterval(()=>{
-  if(db.reminder===new Date().toTimeString().slice(0,5))
-    new Notification("⏰ Waktunya Farming!");
+  if(!db.reminder) return;
+  const now = new Date().toTimeString().slice(0,5);
+  if(now === db.reminder){
+    new Notification("⏰ Waktunya Farming, Degen!");
+  }
 },60000);
+
+/* ================= CSV ================= */
+function exportCSV(){
+  let csv = "name,wallet,link\n";
+  db.tasks.forEach(t=>{
+    csv += `"${t.name}","${t.wallet}","${t.link||""}"\n`;
+  });
+
+  const blob = new Blob([csv],{type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "ultra_degen_tasks.csv";
+  a.click();
+}
+
+function importCSV(){
+  const file = csvFile.files[0];
+  if(!file) return alert("Pilih file CSV");
+
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const lines = e.target.result.split("\n").slice(1);
+    lines.forEach(l=>{
+      const [name,wallet,link] = l.replace(/"/g,"").split(",");
+      if(name && wallet){
+        db.tasks.push({
+          id: crypto.randomUUID(),
+          name,
+          wallet,
+          link
+        });
+      }
+    });
+    save();
+    render();
+  };
+  reader.readAsText(file);
+}
 </script>
 
 </body>
