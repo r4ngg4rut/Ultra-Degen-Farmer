@@ -62,7 +62,7 @@
     <div class="flex gap-2">
       <button onclick="submitTask()"
         class="bg-green-500 flex-1 py-2 rounded font-bold">
-        Tambah
+        Simpan
       </button>
 
       <button onclick="closeModal()"
@@ -211,7 +211,9 @@ function save(){
 }
 
 /* ================= TASK ================= */
-function addTask(){
+let editTaskId = null;
+
+function submitTask(){
   if(!db.tasks) db.tasks = [];
 
   const name = taskName.value.trim();
@@ -225,23 +227,55 @@ function addTask(){
     return;
   }
 
-  db.tasks.push({
-    id: crypto.randomUUID(),
-    name,
-    wallet,
-    link,
-    type,
-    note
-  });
+  // ✏️ MODE EDIT
+  if(editTaskId){
+    const task = db.tasks.find(t => t.id === editTaskId);
+    if(task){
+      task.name = name;
+      task.wallet = wallet;
+      task.link = link;
+      task.type = type;
+      task.note = note;
+    }
+    editTaskId = null;
+  }
+  // ➕ MODE ADD
+  else{
+    db.tasks.push({
+      id: crypto.randomUUID(),
+      name,
+      wallet,
+      link,
+      type,
+      note
+    });
+  }
 
+  // reset form
   taskName.value = "";
   taskWallet.value = "";
   taskLink.value = "";
   taskNote.value = "";
 
   save();
+  closeModal();   // tutup modal DI SINI
   render();
 }
+  
+  function editTask(id){
+    const task = db.tasks.find(t => t.id === id);
+    if(!task) return;
+
+  editTaskId = id;
+
+  taskName.value = task.name;
+  taskWallet.value = task.wallet;
+  taskLink.value = task.link || "";
+  taskType.value = task.type || "other";
+  taskNote.value = task.note || "";
+
+  openModal();
+  }
 
 function toggleTask(id){
   if(!db.history[today]) db.history[today] = {};
@@ -262,11 +296,6 @@ function openModal(){
 
 function closeModal(){
   taskModal.classList.add("hidden");
-}
-
-function submitTask(){
-  addTask();      // pakai logic lama
-  closeModal();   // tutup modal
 }
 
   taskModal.addEventListener("click", e => {
