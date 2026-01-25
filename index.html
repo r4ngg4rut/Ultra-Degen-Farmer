@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>😈 Ultra Degen Farmer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"></script>
+</head>
+
+<body class="bg-slate-950 text-slate-200 p-4">
+
+<h1 class="text-green-400 text-3xl font-bold">😈 Ultra Degen Farmer</h1>
+<p id="today" class="text-slate-400 mb-4"></p>
+
+<!-- AUTH -->
+<div id="authBox" class="bg-slate-900 p-4 rounded-xl mb-4">
+  <h3 class="font-bold mb-2">🔐 Login / Signup</h3>
+  <input id="email" class="w-full p-2 rounded text-black mb-2" placeholder="Email">
+  <input id="password" type="password" class="w-full p-2 rounded text-black mb-2" placeholder="Password">
+  <button onclick="signup()" class="bg-blue-500 w-full py-2 rounded font-bold mb-2">
+    Signup
+  </button>
+  <button onclick="signin()" class="bg-green-500 w-full py-2 rounded font-bold">
+    Signin
+  </button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+  <button onclick="logout()" class="text-red-400 text-sm mb-3">Logout</button>
+
+  <!-- ADD TASK -->
+  <div class="bg-slate-900 p-4 rounded-xl mb-4">
+    <h3 class="font-bold mb-2">➕ Tambah Garapan</h3>
+    <input id="taskName" class="w-full p-2 rounded text-black mb-2" placeholder="Nama Airdrop">
+    <input id="taskWallet" class="w-full p-2 rounded text-black mb-2" placeholder="Wallet / Label">
+    <input id="taskLink" class="w-full p-2 rounded text-black mb-2" placeholder="Link (opsional)">
+    <button onclick="addTask()" class="bg-green-500 w-full py-2 rounded font-bold">
+      Tambah
+    </button>
+  </div>
+
+  <!-- TASK LIST -->
+  <div class="bg-slate-900 p-4 rounded-xl mb-4">
+    <h3 class="font-bold mb-2">📋 Hari Ini</h3>
+    <div id="taskList"></div>
+  </div>
+
+  <!-- HEATMAP -->
+  <div class="bg-slate-900 p-4 rounded-xl mb-4">
+    <h3 class="font-bold mb-3">📅 Heatmap Bulanan</h3>
+    <div id="monthHeatmap" class="grid grid-cols-3 gap-3"></div>
+  </div>
+
+  <!-- REMINDER -->
+  <div class="bg-slate-900 p-4 rounded-xl mb-4">
+    <h3 class="font-bold mb-2">🧠 Reminder Farming</h3>
+    <input type="time" id="reminderTime" class="w-full p-2 rounded text-black mb-2">
+    <button onclick="setReminder()" class="bg-green-500 w-full py-2 rounded font-bold">
+      Set Reminder
+    </button>
+  </div>
+
+  <!-- IMPORT / EXPORT -->
+  <div class="bg-slate-900 p-4 rounded-xl mb-10">
+    <h3 class="font-bold mb-2">📤 Import / Export</h3>
+    <input type="file" id="csvFile" accept=".csv" class="mb-2">
+    <button onclick="importCSV()" class="bg-blue-500 w-full py-2 rounded font-bold mb-2">
+      Import CSV
+    </button>
+    <button onclick="exportCSV()" class="bg-green-500 w-full py-2 rounded font-bold">
+      Export CSV
+    </button>
+  </div>
+
+</div>
+
+<script>
+/* ========= DATE ========= */
+const todayObj = new Date();
+const today = todayObj.toISOString().split("T")[0];
+const year = todayObj.getFullYear();
+todayEl.innerText = "📅 " + today;
+
+/* ========= FIREBASE CONFIG ========= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAMMZ5nXovO8_KnWf3qTHTRsJXoeLsJHHI",
+  authDomain: "ultra-degen-farmer.firebaseapp.com",
+  databaseURL: "https://ultra-degen-farmer-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ultra-degen-farmer"
+  storageBucket: "ultra-degen-farmer.firebasestorage.app",
+  messagingSenderId: "432535783869",
+  appId: "1:432535783869:web:9abaf85fb8734b5d7d6ad4",
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const dbRoot = firebase.database();
+
+/* ========= STATE ========= */
+let userRef = null;
+let db = { year, tasks: [], history: {}, reminder: null };
+
+/* ========= AUTH ========= */
+auth.onAuthStateChanged(user => {
+  if (user) {
+    authBox.classList.add("hidden");
+    app.classList.remove("hidden");
+
+    userRef = dbRoot.ref("ultra_degen/" + user.uid);
+
+    userRef.on("value", snap => {
+      if (snap.exists()) db = snap.val();
+      else save();
+      render();
+    });
+  } else {
+    authBox.classList.remove("hidden");
+    app.classList.add("hidden");
+  }
+});
+
+function signup() {
+  auth.createUserWithEmailAndPassword(email.value, password.value)
+    .catch(e => alert(e.message));
+}
+
+function signin() {
+  auth.signInWithEmailAndPassword(email.value, password.value)
+    .catch(e => alert(e.message));
+}
+
+function logout() {
+  auth.signOut();
+}
+
+/* ========= SAVE ========= */
+function save() {
+  if (userRef) userRef.set(db);
+}
+
+/* ========= TASK ========= */
+function addTask() {
+  const name = taskName.value.trim();
+  const wallet = taskWallet.value.trim();
+  const link = taskLink.value.trim();
+
+  if (!name || !wallet) return alert("Nama & wallet wajib");
+
+  db.tasks.push({
+    id: crypto.randomUUID(),
+    name,
+    wallet,
+    link
+  });
+
+  taskName.value = taskWallet.value = taskLink.value = "";
+  save();
+}
+
+function toggleTask(id) {
+  if (!db.history[today]) db.history[today] = {};
+  db.history[today][id] = !db.history[today][id];
+  save();
+}
+
+function removeTask(id) {
+  if (!confirm("Hapus garapan ini?")) return;
+  db.tasks = db.tasks.filter(t => t.id !== id);
+  save();
+}
+
+/* ========= RENDER ========= */
+function render() {
+  taskList.innerHTML = "";
+  db.tasks.forEach(t => {
+    const done = db.history[today]?.[t.id] || false;
+    taskList.innerHTML += `
+      <div class="flex justify-between items-center border-b border-slate-700 py-2">
+        <div>
+          <div class="${done ? "line-through text-green-400" : ""}">
+            ${t.name} (${t.wallet})
+          </div>
+          ${t.link ? `<a href="${t.link}" target="_blank" class="text-sky-400 text-sm">🔗 Buka</a>` : ""}
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" ${done ? "checked" : ""} onchange="toggleTask('${t.id}')">
+          <button onclick="removeTask('${t.id}')" class="text-red-400">🗑️</button>
+        </div>
+      </div>
+    `;
+  });
+
+  drawMonthlyHeatmap();
+}
+
+/* ========= HEATMAP ========= */
+function drawMonthlyHeatmap() {
+  monthHeatmap.innerHTML = "";
+  const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+
+  months.forEach((m, idx) => {
+    let count = 0;
+    Object.keys(db.history).forEach(d => {
+      const date = new Date(d);
+      if (date.getFullYear() === year && date.getMonth() === idx) {
+        count += Object.values(db.history[d]).filter(v => v).length;
+      }
+    });
+
+    let color = "bg-slate-700";
+    if (count > 0) color = "bg-green-900";
+    if (count > 10) color = "bg-green-500";
+    if (count > 30) color = "bg-green-300";
+
+    monthHeatmap.innerHTML += `
+      <div class="rounded-xl p-4 text-center ${color}">
+        <div class="font-bold">${m}</div>
+        <div class="text-xs">${count} done</div>
+      </div>
+    `;
+  });
+}
+
+/* ========= REMINDER ========= */
+function setReminder() {
+  const time = reminderTime.value;
+  if (!time) return alert("Pilih jam dulu");
+  db.reminder = time;
+  save();
+  Notification.requestPermission();
+}
+
+setInterval(() => {
+  if (!db.reminder) return;
+  const now = new Date().toTimeString().slice(0,5);
+  if (now === db.reminder) {
+    new Notification("⏰ Waktunya Farming, Degen!");
+  }
+}, 60000);
+
+/* ========= CSV ========= */
+function exportCSV() {
+  let csv = "task,wallet,link\n";
+  db.tasks.forEach(t => {
+    csv += `${t.name},${t.wallet},${t.link || ""}\n`;
+  });
+  const blob = new Blob([csv], { type:"text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "ultra_degen_tasks.csv";
+  a.click();
+}
+
+function importCSV() {
+  const file = csvFile.files[0];
+  if (!file) return alert("Pilih file CSV");
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split("\n").slice(1);
+    lines.forEach(l => {
+      const [name, wallet, link] = l.split(",");
+      if (name && wallet) {
+        db.tasks.push({
+          id: crypto.randomUUID(),
+          name: name.trim(),
+          wallet: wallet.trim(),
+          link: (link || "").trim()
+        });
+      }
+    });
+    save();
+  };
+  reader.readAsText(file);
+}
+</script>
+
+</body>
+</html>
