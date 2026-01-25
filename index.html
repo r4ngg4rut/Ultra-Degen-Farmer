@@ -75,7 +75,7 @@
   <h3 id="heatmapTitle" class="font-bold mb-2"></h3>
 
   <div id="monthHeatmap"
-       class="grid grid-cols-7 gap-2 text-xs text-center"></div>
+    class="grid grid-cols-7 gap-1 text-[10px]"></div>
 </div>
 
 <!-- ================= REMINDER ================= -->
@@ -269,11 +269,13 @@ function drawHeatmap(){
     if(doneCount > 5) color = "bg-green-400";
 
     monthHeatmap.innerHTML += `
-      <div class="aspect-square rounded ${color}
-                  flex items-center justify-center"
-           title="${dateStr} : ${doneCount} task">
-        ${day}
-      </div>
+    <div
+      class="w-8 h-8 md:w-9 md:h-9
+           flex items-center justify-center
+           rounded-md ${color}
+           ${isToday ? 'ring-2 ring-green-400' : ''}">
+      ${day}
+    </div>
     `;
   }
 }
