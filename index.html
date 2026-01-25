@@ -263,8 +263,8 @@ function submitTask(){
 }
   
   function editTask(id){
-    const task = db.tasks.find(t => t.id === id);
-    if(!task) return;
+  const task = db.tasks.find(t => t.id === id);
+  if(!task) return;
 
   editTaskId = id;
 
@@ -274,8 +274,8 @@ function submitTask(){
   taskType.value = task.type || "other";
   taskNote.value = task.note || "";
 
-  openModal();
-  }
+  openEditModal();
+}
 
 function toggleTask(id){
   if(!db.history[today]) db.history[today] = {};
@@ -292,10 +292,10 @@ function removeTask(id){
 }
   
 function openModal(){
-  // 🔴 reset mode (penting!)
+  // reset mode
   editTaskId = null;
 
-  // 🔴 reset form (penting!)
+  // reset form
   taskName.value = "";
   taskWallet.value = "";
   taskLink.value = "";
@@ -305,8 +305,12 @@ function openModal(){
   // buka modal
   taskModal.classList.remove("hidden");
 }
-
-function closeModal(){
+  
+  function openEditModal(){
+  taskModal.classList.remove("hidden");
+}
+  
+  function closeModal(){
   editTaskId = null;
   taskModal.classList.add("hidden");
 }
