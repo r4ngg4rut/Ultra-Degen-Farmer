@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.tailwindcss.com"></script>
 
-<!-- Firebase COMPAT -->
+<!-- Firebase COMPAT (WAJIB) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -34,10 +34,22 @@
 <!-- ADD TASK -->
 <div class="bg-slate-900 p-4 rounded-xl mb-4">
   <h3 class="font-bold mb-2">➕ Tambah Garapan</h3>
+
   <input id="taskName" class="w-full p-2 rounded text-black mb-2" placeholder="Nama Airdrop">
   <input id="taskWallet" class="w-full p-2 rounded text-black mb-2" placeholder="Wallet / Label">
   <input id="taskLink" class="w-full p-2 rounded text-black mb-2" placeholder="Link (opsional)">
-  <button onclick="addTask()" class="bg-green-500 w-full py-2 rounded font-bold">Tambah</button>
+
+  <select id="taskType" class="w-full p-2 rounded text-black mb-2">
+    <option value="testnet">Testnet</option>
+    <option value="point">Point</option>
+    <option value="social">Social</option>
+    <option value="retro">Retro</option>
+    <option value="other">Other</option>
+  </select>
+
+  <button onclick="addTask()" class="bg-green-500 w-full py-2 rounded font-bold">
+    Tambah
+  </button>
 </div>
 
 <!-- TASK LIST -->
@@ -52,24 +64,37 @@
   <div id="monthHeatmap" class="grid grid-cols-3 gap-3"></div>
 </div>
 
-<!-- EXPORT / IMPORT -->
+<!-- REMINDER -->
 <div class="bg-slate-900 p-4 rounded-xl mb-4">
-  <h3 class="font-bold mb-2">📤 Export / Import</h3>
+  <h3 class="font-bold mb-2">🧠 Reminder Farming</h3>
+  <input type="time" id="reminderTime" class="w-full p-2 rounded text-black mb-2">
+  <button onclick="setReminder()" class="bg-green-500 w-full py-2 rounded font-bold">
+    Set Reminder
+  </button>
+</div>
+
+<!-- CSV -->
+<div class="bg-slate-900 p-4 rounded-xl mb-10">
+  <h3 class="font-bold mb-2">📤 Import / Export</h3>
   <input type="file" id="csvFile" accept=".csv" class="mb-2">
-  <button onclick="importCSV()" class="bg-blue-500 w-full py-2 rounded font-bold mb-2">Import CSV</button>
-  <button onclick="exportCSV()" class="bg-green-500 w-full py-2 rounded font-bold">Export CSV</button>
+  <button onclick="importCSV()" class="bg-blue-500 w-full py-2 rounded font-bold mb-2">
+    Import CSV
+  </button>
+  <button onclick="exportCSV()" class="bg-green-500 w-full py-2 rounded font-bold">
+    Export CSV
+  </button>
 </div>
 
 </div>
 
 <script>
-/* ========= DATE ========= */
+/* ================= DATE ================= */
 const todayObj = new Date();
 const today = todayObj.toISOString().split("T")[0];
 const year = todayObj.getFullYear();
 document.getElementById("today").innerText = "📅 " + today;
 
-/* ========= FIREBASE ========= */
+/* ================= FIREBASE ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyAMMZ5nXovO8_KnWf3qTHTRsJXoeLsJHHI",
   authDomain: "ultra-degen-farmer.firebaseapp.com",
@@ -81,11 +106,16 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const dbRoot = firebase.database();
 
-/* ========= STATE ========= */
+/* ================= STATE (DEFENSIVE) ================= */
 let userRef = null;
-let db = { year, tasks: [], history: {} };
+let db = {
+  year,
+  tasks: [],
+  history: {},
+  reminder: null
+};
 
-/* ========= AUTH ========= */
+/* ================= AUTH ================= */
 auth.onAuthStateChanged(user => {
   if (!user) {
     authBox.classList.remove("hidden");
@@ -97,105 +127,184 @@ auth.onAuthStateChanged(user => {
   app.classList.remove("hidden");
 
   userRef = dbRoot.ref("ultra_degen/" + user.uid);
+
   userRef.on("value", snap => {
-    db = snap.exists() ? snap.val() : db;
+    const data = snap.val() || {};
+    db = {
+      year: data.year || year,
+      tasks: Array.isArray(data.tasks) ? data.tasks : [],
+      history: data.history || {},
+      reminder: data.reminder || null
+    };
     render();
   });
 });
 
-function signup(){ auth.createUserWithEmailAndPassword(email.value,password.value).catch(e=>alert(e.message)); }
-function signin(){ auth.signInWithEmailAndPassword(email.value,password.value).catch(e=>alert(e.message)); }
+function signup(){
+  auth.createUserWithEmailAndPassword(email.value, password.value)
+    .catch(e => alert(e.message));
+}
+function signin(){
+  auth.signInWithEmailAndPassword(email.value, password.value)
+    .catch(e => alert(e.message));
+}
 function logout(){ auth.signOut(); }
 
-/* ========= CORE ========= */
+/* ================= CORE ================= */
 function save(){
-  if(!userRef){
-    alert("User belum siap, coba ulang");
-    return;
-  }
-  userRef.set(db);
+  if(userRef) userRef.set(db);
 }
 
+/* ================= TASK ================= */
 function addTask(){
-  if(!taskName.value || !taskWallet.value) return alert("Isi nama & wallet");
-  db.tasks.push({id:crypto.randomUUID(),name:taskName.value,wallet:taskWallet.value,link:taskLink.value});
-  taskName.value=taskWallet.value=taskLink.value="";
+  if(!db.tasks) db.tasks = [];
+
+  const name = taskName.value.trim();
+  const wallet = taskWallet.value.trim();
+  const link = taskLink.value.trim();
+  const type = taskType.value;
+
+  if(!name || !wallet){
+    alert("Nama & wallet wajib");
+    return;
+  }
+
+  db.tasks.push({
+    id: crypto.randomUUID(),
+    name,
+    wallet,
+    link,
+    type
+  });
+
+  taskName.value = "";
+  taskWallet.value = "";
+  taskLink.value = "";
+
   save();
   render();
 }
 
 function toggleTask(id){
-  if(!db.history[today]) db.history[today]={};
-  db.history[today][id]=!db.history[today][id];
+  if(!db.history[today]) db.history[today] = {};
+  db.history[today][id] = !db.history[today][id];
   save();
   render();
 }
 
 function removeTask(id){
-  db.tasks=db.tasks.filter(t=>t.id!==id);
+  if(!confirm("Hapus garapan ini?")) return;
+  db.tasks = db.tasks.filter(t => t.id !== id);
   save();
   render();
 }
 
-/* ========= RENDER ========= */
+/* ================= RENDER ================= */
 function render(){
-  taskList.innerHTML="";
-  db.tasks.forEach(t=>{
-    const done=db.history[today]?.[t.id];
-    taskList.innerHTML+=`
-      <div class="flex justify-between py-2 border-b border-slate-700">
-        <div class="${done?'line-through text-green-400':''}">
-          ${t.name} (${t.wallet})
+  taskList.innerHTML = "";
+
+  db.tasks.forEach(t => {
+    const done = db.history[today]?.[t.id] || false;
+
+    taskList.innerHTML += `
+      <div class="flex justify-between items-center border-b border-slate-700 py-2">
+        <div>
+          <div class="${done ? 'line-through text-green-400' : ''}">
+            [${t.type}] ${t.name} (${t.wallet})
+          </div>
+          ${t.link ? `<a href="${t.link}" target="_blank" class="text-sky-400 text-sm">🔗 Buka</a>` : ""}
         </div>
-        <div class="flex gap-2">
-          <input type="checkbox" ${done?'checked':''} onchange="toggleTask('${t.id}')">
+        <div class="flex items-center gap-2">
+          <input type="checkbox" ${done ? "checked" : ""} onchange="toggleTask('${t.id}')">
           <button onclick="removeTask('${t.id}')" class="text-red-400">🗑️</button>
         </div>
-      </div>`;
+      </div>
+    `;
   });
+
   drawHeatmap();
 }
 
-/* ========= HEATMAP ========= */
+/* ================= HEATMAP ================= */
 function drawHeatmap(){
-  monthHeatmap.innerHTML="";
-  const months=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
-  months.forEach((m,i)=>{
-    let c=0;
-    Object.keys(db.history).forEach(d=>{
-      const dt=new Date(d);
-      if(dt.getFullYear()===year && dt.getMonth()===i)
-        c+=Object.values(db.history[d]).filter(v=>v).length;
+  monthHeatmap.innerHTML = "";
+  const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+
+  months.forEach((m, idx) => {
+    let count = 0;
+    Object.keys(db.history).forEach(d => {
+      const dt = new Date(d);
+      if(dt.getFullYear() === year && dt.getMonth() === idx){
+        count += Object.values(db.history[d]).filter(v => v).length;
+      }
     });
-    monthHeatmap.innerHTML+=`
-      <div class="p-3 rounded text-center ${c?'bg-green-700':'bg-slate-700'}">
-        <b>${m}</b><div class="text-xs">${c}</div>
-      </div>`;
+
+    let color = "bg-slate-700";
+    if(count > 0) color = "bg-green-900";
+    if(count > 10) color = "bg-green-600";
+    if(count > 30) color = "bg-green-400";
+
+    monthHeatmap.innerHTML += `
+      <div class="rounded-xl p-4 text-center ${color}">
+        <div class="font-bold">${m}</div>
+        <div class="text-xs">${count} done</div>
+      </div>
+    `;
   });
 }
 
-/* ========= CSV ========= */
+/* ================= REMINDER ================= */
+function setReminder(){
+  const time = reminderTime.value;
+  if(!time) return alert("Pilih jam dulu");
+  db.reminder = time;
+  save();
+  Notification.requestPermission();
+}
+
+setInterval(()=>{
+  if(!db.reminder) return;
+  const now = new Date().toTimeString().slice(0,5);
+  if(now === db.reminder){
+    new Notification("⏰ Waktunya Farming, Degen!");
+  }
+},60000);
+
+/* ================= CSV ================= */
 function exportCSV(){
-  let csv="name,wallet,link\n";
-  db.tasks.forEach(t=>csv+=`"${t.name}","${t.wallet}","${t.link||""}"\n`);
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download="ultra_degen_tasks.csv";
+  let csv = "name,wallet,link,type\n";
+  db.tasks.forEach(t=>{
+    csv += `"${t.name}","${t.wallet}","${t.link||""}","${t.type}"\n`;
+  });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download = "ultra_degen_tasks.csv";
   a.click();
 }
 
 function importCSV(){
-  const f=csvFile.files[0];
-  if(!f) return;
-  const r=new FileReader();
-  r.onload=e=>{
-    e.target.result.split("\n").slice(1).forEach(l=>{
-      const [n,w,li]=l.replace(/"/g,"").split(",");
-      if(n&&w) db.tasks.push({id:crypto.randomUUID(),name:n,wallet:w,link:li});
+  const file = csvFile.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split("\n").slice(1);
+    lines.forEach(l => {
+      const [name,wallet,link,type] = l.replace(/"/g,"").split(",");
+      if(name && wallet){
+        db.tasks.push({
+          id: crypto.randomUUID(),
+          name,
+          wallet,
+          link,
+          type: type || "other"
+        });
+      }
     });
-    save();render();
+    save();
+    render();
   };
-  r.readAsText(f);
+  reader.readAsText(file);
 }
 </script>
 
