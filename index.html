@@ -70,31 +70,51 @@
   </table>
 </div>
 
-<!-- ================= HEATMAP ================= -->
-<div class="bg-slate-900 p-4 rounded-xl mb-4">
-  <h3 id="heatmapTitle" class="font-bold mb-2"></h3>
+<!-- ================= DASHBOARD BAWAH ================= -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
 
-  <div id="monthHeatmap"
-  class="grid grid-cols-7 sm:grid-cols-7 md:grid-cols-14 lg:grid-cols-21
-         gap-1 text-[10px] justify-center"></div>
-</div>
+  <!-- HEATMAP -->
+  <div class="bg-slate-900 p-4 rounded-xl">
+    <h3 id="heatmapTitle" class="font-bold mb-3"></h3>
 
-<!-- ================= REMINDER ================= -->
-<div class="bg-slate-900 p-4 rounded-xl mb-4">
-  <h3 class="font-bold mb-2">🧠 Reminder Farming</h3>
-  <input type="time" id="reminderTime" class="w-full p-2 rounded text-black mb-2">
-  <button onclick="setReminder()" class="bg-green-500 w-full py-2 rounded font-bold">
-    Set Reminder
-  </button>
-</div>
+    <!-- kunci ukuran heatmap -->
+    <div class="max-w-[320px] mx-auto">
+      <div
+        id="monthHeatmap"
+        class="grid grid-cols-7 gap-1 text-[10px] justify-items-center">
+      </div>
+    </div>
+  </div>
 
-<!-- ================= CSV ================= -->
-<div class="bg-slate-900 p-4 rounded-xl mb-10">
-  <h3 class="font-bold mb-2">📤 Import / Export</h3>
-  <input type="file" id="csvFile" accept=".csv" class="mb-2">
-  <button onclick="importCSV()" class="bg-blue-500 w-full py-2 rounded font-bold mb-2">Import CSV</button>
-  <button onclick="exportCSV()" class="bg-green-500 w-full py-2 rounded font-bold">Export CSV</button>
-</div>
+  <!-- REMINDER -->
+  <div class="bg-slate-900 p-4 rounded-xl">
+    <h3 class="font-bold mb-3">🧠 Reminder Farming</h3>
+    <input
+      type="time"
+      id="reminderTime"
+      class="w-full p-2 rounded text-black mb-3">
+    <button
+      onclick="setReminder()"
+      class="bg-green-500 w-full py-2 rounded font-bold">
+      Set Reminder
+    </button>
+  </div>
+
+  <!-- IMPORT EXPORT -->
+  <div class="bg-slate-900 p-4 rounded-xl">
+    <h3 class="font-bold mb-3">📤 Import / Export</h3>
+    <input type="file" id="csvFile" accept=".csv" class="mb-3">
+    <button
+      onclick="importCSV()"
+      class="bg-blue-500 w-full py-2 rounded font-bold mb-2">
+      Import CSV
+    </button>
+    <button
+      onclick="exportCSV()"
+      class="bg-green-500 w-full py-2 rounded font-bold">
+      Export CSV
+    </button>
+  </div>
 
 </div>
 
@@ -272,15 +292,18 @@ function drawHeatmap(){
     if(doneCount > 5) color = "bg-green-400";
 
     monthHeatmap.innerHTML += `
-      <div
-        class="w-8 h-8 md:w-9 md:h-9
-               flex items-center justify-center
-               rounded-md ${color}
-               ${isToday ? 'ring-2 ring-green-400' : ''}"
-        title="${doneCount} task selesai">
-        ${day}
-      </div>
-    `;
+  <div
+    class="
+      w-7 h-7
+      flex items-center justify-center
+      rounded-md
+      ${color}
+      ${isToday ? 'ring-2 ring-green-400' : ''}
+    "
+    title="${doneCount} task selesai">
+    ${day}
+  </div>
+`;
   }
 }
 
