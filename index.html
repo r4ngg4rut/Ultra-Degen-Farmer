@@ -290,7 +290,19 @@ function removeTask(id){
   save();
   render();
 }
+  
 function openModal(){
+  // 🔴 reset mode (penting!)
+  editTaskId = null;
+
+  // 🔴 reset form (penting!)
+  taskName.value = "";
+  taskWallet.value = "";
+  taskLink.value = "";
+  taskType.value = "testnet";
+  taskNote.value = "";
+
+  // buka modal
   taskModal.classList.remove("hidden");
 }
 
