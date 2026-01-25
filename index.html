@@ -251,7 +251,7 @@ function drawHeatmap(){
   const y = now.getFullYear();
   const m = now.getMonth(); // bulan aktif (0-11)
 
-  // 🔥 set judul otomatis
+  // Judul otomatis
   heatmapTitle.innerText = `📅 Bulan ${monthNames[m]}`;
 
   const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -263,19 +263,22 @@ function drawHeatmap(){
     const doneCount =
       Object.values(db.history[dateStr] || {}).filter(Boolean).length;
 
+    const isToday = dateStr === today;
+
     let color = "bg-slate-800";
     if(doneCount > 0) color = "bg-green-900";
     if(doneCount > 2) color = "bg-green-600";
     if(doneCount > 5) color = "bg-green-400";
 
     monthHeatmap.innerHTML += `
-    <div
-      class="w-8 h-8 md:w-9 md:h-9
-           flex items-center justify-center
-           rounded-md ${color}
-           ${isToday ? 'ring-2 ring-green-400' : ''}">
-      ${day}
-    </div>
+      <div
+        class="w-8 h-8 md:w-9 md:h-9
+               flex items-center justify-center
+               rounded-md ${color}
+               ${isToday ? 'ring-2 ring-green-400' : ''}"
+        title="${doneCount} task selesai">
+        ${day}
+      </div>
     `;
   }
 }
