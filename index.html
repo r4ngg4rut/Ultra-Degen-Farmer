@@ -54,6 +54,10 @@
       <option value="retro">Retro</option>
       <option value="other">Other</option>
     </select>
+    
+    <textarea id="taskNote"
+      class="w-full p-2 rounded text-black mb-3"
+      placeholder="Keterangan (opsional)"></textarea>
 
     <div class="flex gap-2">
       <button onclick="submitTask()"
@@ -76,15 +80,43 @@
 </button>
 
 <!-- TASK LIST -->
-<div class="bg-slate-900 p-4 rounded-xl mb-4">
-  <h3 class="font-bold mb-2">📋 Hari Ini</h3>
-  <div id="taskList"></div>
+<div class="overflow-x-auto">
+  <table class="w-full text-sm border border-slate-700">
+    <thead class="bg-slate-800">
+      <tr>
+        <th class="p-2">No</th>
+        <th class="p-2 text-left">Nama Garapan</th>
+        <th class="p-2">Link</th>
+        <th class="p-2">Category</th>
+        <th class="p-2">Keterangan</th>
+        <th class="p-2">Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="activeTable"></tbody>
+  </table>
 </div>
 
 <!-- HEATMAP -->
 <div class="bg-slate-900 p-4 rounded-xl mb-4">
   <h3 class="font-bold mb-2">📅 Heatmap Bulanan</h3>
   <div id="monthHeatmap" class="grid grid-cols-3 gap-3"></div>
+</div>
+
+<!-- Completed -->
+<h3 class="font-bold mt-6 mb-2 text-green-400">✅ Completed</h3>
+
+<div class="overflow-x-auto">
+  <table class="w-full text-sm border border-slate-700">
+    <thead class="bg-slate-800">
+      <tr>
+        <th class="p-2">No</th>
+        <th class="p-2 text-left">Nama Garapan</th>
+        <th class="p-2">Category</th>
+        <th class="p-2">Keterangan</th>
+      </tr>
+    </thead>
+    <tbody id="completedTable"></tbody>
+  </table>
 </div>
 
 <!-- REMINDER -->
@@ -186,6 +218,7 @@ function addTask(){
   const wallet = taskWallet.value.trim();
   const link = taskLink.value.trim();
   const type = taskType.value;
+  const note = taskNote.value.trim();
 
   if(!name || !wallet){
     alert("Nama & wallet wajib");
@@ -197,12 +230,14 @@ function addTask(){
     name,
     wallet,
     link,
-    type
+    type,
+    note
   });
 
   taskName.value = "";
   taskWallet.value = "";
   taskLink.value = "";
+  taskNote.value = "";
 
   save();
   render();
@@ -240,25 +275,41 @@ function submitTask(){
 
 /* ================= RENDER ================= */
 function render(){
-  taskList.innerHTML = "";
+  activeTable.innerHTML = "";
+  completedTable.innerHTML = "";
+
+  let noActive = 1;
+  let noDone = 1;
 
   db.tasks.forEach(t => {
     const done = db.history[today]?.[t.id] || false;
 
-    taskList.innerHTML += `
-      <div class="flex justify-between items-center border-b border-slate-700 py-2">
-        <div>
-          <div class="${done ? 'line-through text-green-400' : ''}">
-            [${t.type}] ${t.name} (${t.wallet})
-          </div>
-          ${t.link ? `<a href="${t.link}" target="_blank" class="text-sky-400 text-sm">🔗 Buka</a>` : ""}
-        </div>
-        <div class="flex items-center gap-2">
-          <input type="checkbox" ${done ? "checked" : ""} onchange="toggleTask('${t.id}')">
-          <button onclick="removeTask('${t.id}')" class="text-red-400">🗑️</button>
-        </div>
-      </div>
-    `;
+    if(done){
+      completedTable.innerHTML += `
+        <tr class="border-t border-slate-700 text-green-400">
+          <td class="p-2 text-center">${noDone++}</td>
+          <td class="p-2">${t.name}</td>
+          <td class="p-2 text-center">${t.type}</td>
+          <td class="p-2">${t.note || "-"}</td>
+        </tr>
+      `;
+    } else {
+      activeTable.innerHTML += `
+        <tr class="border-t border-slate-700">
+          <td class="p-2 text-center">${noActive++}</td>
+          <td class="p-2">${t.name}</td>
+          <td class="p-2 text-center">
+            ${t.link ? `<a href="${t.link}" target="_blank" class="text-sky-400">Buka</a>` : "-"}
+          </td>
+          <td class="p-2 text-center">${t.type}</td>
+          <td class="p-2">${t.note || "-"}</td>
+          <td class="p-2 text-center flex gap-2 justify-center">
+            <input type="checkbox" onchange="toggleTask('${t.id}')">
+            <button onclick="removeTask('${t.id}')" class="text-red-400">🗑️</button>
+          </td>
+        </tr>
+      `;
+    }
   });
 
   drawHeatmap();
