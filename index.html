@@ -295,6 +295,7 @@ function openModal(){
 }
 
 function closeModal(){
+  editTaskId = null;
   taskModal.classList.add("hidden");
 }
 
@@ -334,8 +335,10 @@ function render(){
           <td class="p-2">${t.note || "-"}</td>
           <td class="p-2 text-center flex gap-2 justify-center">
             <input type="checkbox" onchange="toggleTask('${t.id}')">
+            <button onclick="editTask('${t.id}')" class="text-yellow-400">✏️</button>
             <button onclick="removeTask('${t.id}')" class="text-red-400">🗑️</button>
           </td>
+
         </tr>
       `;
     }
