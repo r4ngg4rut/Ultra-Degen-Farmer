@@ -45,9 +45,9 @@
         <th class="p-2">No</th>
         <th class="p-2 text-left">Nama</th>
         <th class="p-2">Link</th>
-        <th class="p-2">Kategori</th>
         <th class="p-2">Aksi</th>
         <th class="p-2">Keterangan</th>
+        <th class="p-2">Kategori</th>
       </tr>
     </thead>
     <tbody id="activeTable"></tbody>
@@ -251,14 +251,14 @@ function render(){
       activeTable.innerHTML+=`<tr class="border-t">
         <td class="p-2">${a++}</td>
         <td class="p-2">${t.name}</td>
-        <td class="p-2 text-center">${t.link?`<a href="${t.link}" target="_blank" class="text-sky-400">Buka</a>`:"-"}</td>
-        <td class="p-2">${t.type}</td>
+        <td class="p-2 text-center">${t.link?`<a href="${t.link}" target="_blank" class="text-sky-400">Buka</a>`:"-"}</td>        
         <td class="p-2 flex gap-2 justify-center">
           <input type="checkbox" onchange="toggleTask('${t.id}')">
           <button onclick="editTask('${t.id}')" class="text-yellow-400">✏️</button>
           <button onclick="removeTask('${t.id}')" class="text-red-400">🗑️</button>
         </td>
         <td class="p-2">${t.note||"-"}</td>
+        <td class="p-2">${t.type}</td>
         
         </tr>`;
     }
