@@ -253,12 +253,14 @@ function render(){
         <td class="p-2">${t.name}</td>
         <td class="p-2 text-center">${t.link?`<a href="${t.link}" target="_blank" class="text-sky-400">Buka</a>`:"-"}</td>
         <td class="p-2">${t.type}</td>
-        <td class="p-2">${t.note||"-"}</td>
         <td class="p-2 flex gap-2 justify-center">
           <input type="checkbox" onchange="toggleTask('${t.id}')">
           <button onclick="editTask('${t.id}')" class="text-yellow-400">✏️</button>
           <button onclick="removeTask('${t.id}')" class="text-red-400">🗑️</button>
-        </td></tr>`;
+        </td>
+        <td class="p-2">${t.note||"-"}</td>
+        
+        </tr>`;
     }
   });
   drawHeatmap();
